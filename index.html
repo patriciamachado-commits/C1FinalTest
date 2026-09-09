@@ -399,8 +399,8 @@ try{
 </script>
 
 <script>
-/* __sqaSpeakSend (2026-09-09) — make sure the spoken transcript is actually SENT to the
-   server on submit, even on pages whose save() hardcodes speakingTranscript:"". Server scores it. */
+/* __sqaSpeakSend v2 (2026-09-09) — on submit, ensure the real transcript AND the real
+   section scores reach the server, even when the page's save() posts nulls. */
 (function(){
   function best(){
     var s='';
@@ -410,12 +410,22 @@ try{
     var ty=document.getElementById('sqaTypeSpeak'); if((!s||s.length<2)&&ty&&(ty.value||'').trim())s=(ty.value||'').trim();
     return s;
   }
+  function realScores(){
+    try{ if(typeof scores!=='undefined'&&scores&&typeof scores==='object'){
+      var any=Object.keys(scores).some(function(k){return typeof scores[k]==='number'&&!isNaN(scores[k]);});
+      if(any) return scores;
+    }}catch(e){}
+    return null;
+  }
   var _f=window.fetch;
   window.fetch=function(u,opt){
     try{
       if(opt&&typeof opt.body==='string'&&/submit-final/.test(''+u)){
         var j=JSON.parse(opt.body);
-        if(!j.speakingTranscript||!(''+j.speakingTranscript).trim()){ var t=best(); if(t){ j.speakingTranscript=t; opt.body=JSON.stringify(j); } }
+        if(!j.speakingTranscript||!(''+j.speakingTranscript).trim()){ var t=best(); if(t) j.speakingTranscript=t; }
+        var sc=j.scores; var hasReal=sc&&typeof sc==='object'&&Object.keys(sc).some(function(k){return typeof sc[k]==='number'&&!isNaN(sc[k]);});
+        if(!hasReal){ var rs=realScores(); if(rs) j.scores=rs; }
+        opt.body=JSON.stringify(j);
       }
     }catch(e){}
     return _f.apply(this,arguments);
